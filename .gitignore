@@ -1,3 +1,37 @@
+.gradle/
+**/build/
+local.properties
+.local/
+.idea/
+*.iml
+.DS_Store
+__pycache__/
+*.py[cod]
+.env*
+*.jks
+*.keystore
+*.apk
+*.aab
+*.pcm
+*.wav
+*.mp3
+*.log
+
+# User data, exports and local signing / configuration
+*.db
+*.db-*
+*.sqlite*
+*.hprof
+*.zip
+captures/
+*.pem
+*.p12
+*.pfx
+*.key
+.env
+.env.*
+
+# Additional rules retained from the GitHub checkout
 # Gradle files
 .gradle/
 build/

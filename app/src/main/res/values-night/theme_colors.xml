@@ -1,0 +1,17 @@
+<resources>
+    <color name="theme_primary">#66DBC1</color>
+    <color name="theme_onPrimary">#00382E</color>
+    <color name="theme_secondaryContainer">#324D45</color>
+    <color name="theme_onSecondaryContainer">#CCE8DF</color>
+    <color name="theme_tertiaryContainer">#364C68</color>
+    <color name="theme_onTertiaryContainer">#D6E3FF</color>
+    <color name="theme_error">#FFB4AB</color>
+    <color name="theme_errorContainer">#93000A</color>
+    <color name="theme_onErrorContainer">#FFDAD6</color>
+    <color name="theme_surface">#0E1512</color>
+    <color name="theme_onSurface">#DEE5DF</color>
+    <color name="theme_onSurfaceVariant">#BFC9C1</color>
+    <color name="theme_surfaceContainer">#1A211D</color>
+    <color name="theme_outlineVariant">#3F4943</color>
+    <bool name="theme_light">false</bool>
+</resources>

@@ -1,0 +1,24 @@
+UVCAndroid 1.0.13 / native video dependencies
+
+UVCAndroid by shiyinghan, with UVCCamera by saki. Apache-2.0.
+Official source tag: https://github.com/shiyinghan/UVCAndroid/tree/1.0.13
+Source commit: 6018c7f20238832929cf61427427bb7828056260
+The Maven artifact is used without modifying its binaries. Only the low-level
+video API is called. Image/audio recording helpers and storage permissions
+are not used. No native library is statically linked into our Java app code.
+
+Native dependencies retain their own licenses:
+libusb: LGPL-2.1-or-later; libuvc: BSD-3-Clause; libyuv: BSD-style plus PATENTS;
+libjpeg-turbo: IJG/BSD/zlib; RapidJSON: MIT.
+This software is based in part on the work of the Independent JPEG Group.
+See the adjacent complete license files. The libyuv AUTHORS file is upstream
+attribution, not information about application users or meeting participants.
+
+Corresponding native sources and Android build scripts are in the official
+source tag under libuvccamera/src/main/jni. The LGPL libusb component is a
+separate dynamically loaded shared library. Users may modify and rebuild
+these sources, replace the shared libraries, rebuild this MIT application,
+and install a build signed with their own key. The project imposes no
+additional restriction on modification or reverse engineering for debugging
+changes to the LGPL component. Distributors of modified native binaries must
+provide the corresponding modified source and preserve its license notices.

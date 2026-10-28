@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Preserve the existing microphone shape within the central adaptive-icon safe zone.
+         The same alpha silhouette is used for the Android 13+ monochrome layer. -->
+    <group android:scaleX="1.25" android:scaleY="1.25"
+        android:translateX="24" android:translateY="24">
+        <path android:fillColor="#000000"
+            android:pathData="M20,10a4,4 0,0 1,8 0v13a4,4 0,0 1,-8 0z" />
+        <path android:strokeColor="#000000" android:strokeWidth="3"
+            android:strokeLineCap="round" android:fillColor="#00000000"
+            android:pathData="M15,22v2a9,9 0,0 0,18 0v-2M24,33v7M19,40h10" />
+    </group>
+</vector>

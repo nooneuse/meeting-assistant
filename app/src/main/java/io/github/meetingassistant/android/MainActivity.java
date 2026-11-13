@@ -64,7 +64,8 @@ public final class MainActivity extends Activity {
   private TextView preference, answer, transcript, answerHeading;
   private ScrollView answerPane, transcriptPane;
   private Button record, raw, retry, cancel, auto;
-  private ImageButton awake, meetingsButton, historyButton, imageButton, captureImage;
+  private ImageButton autoScroll, awake, meetingsButton, historyButton, imageButton, captureImage;
+  private boolean anchorAnswerEnd;
   private ImageInputUi imageUi;
   private AudioInputUi audioUi;
   private AudioInputController.State renderedAudioState;
@@ -501,6 +502,25 @@ public final class MainActivity extends Activity {
               imageUi.showDrawer();
             });
     imageButton.setId(R.id.image_input_button);
+    autoScroll =
+        inlineIconButton(
+            R.drawable.ic_auto_scroll,
+            getString(R.string.auto_scroll),
+            () -> setAutoScroll(!app.settings.autoScrollAnswer));
+    autoScroll.setId(R.id.auto_scroll_button);
+    autoScroll.setAccessibilityDelegate(
+        new View.AccessibilityDelegate() {
+          @Override
+          public void onInitializeAccessibilityNodeInfo(
+              View host, android.view.accessibility.AccessibilityNodeInfo info) {
+            super.onInitializeAccessibilityNodeInfo(host, info);
+            info.setClassName(Switch.class.getName());
+            info.setCheckable(true);
+            info.setChecked(app.settings.autoScrollAnswer);
+          }
+        });
+    header.addView(autoScroll);
+    updateAutoScrollButton();
     awake =
         inlineIconButton(
             R.drawable.ic_bulb_off, getString(R.string.awake_enable), () -> setAwake(!app.awake));
@@ -572,8 +592,8 @@ public final class MainActivity extends Activity {
           }
         });
     buildPanes();
-    app.session.deferRevisions(!app.followAnswer);
-    render(app.session.snapshot());
+    updateAnswerRevisionDeferral();
+    render(app.session.snapshot(), false);
     applyAwake();
     scheduleBarsHide(4000);
     page.requestFocus();
@@ -960,12 +980,36 @@ public final class MainActivity extends Activity {
     transcript.setTextIsSelectable(true);
     transcript.setLineSpacing(dp(2), 1.05f);
     transcript.setPadding(dp(14), dp(12), dp(14), dp(18));
-    answerPane = new ScrollView(this);
+    anchorAnswerEnd = false;
+    answerPane =
+        new ScrollView(this) {
+          @Override
+          protected void onLayout(boolean changed, int l, int t, int r, int b) {
+            if (this == answerPane && keepAnswerAtEnd()) {
+              // Layout can clamp the old offset while the toolbar changes the viewport.
+              scrollProgrammatic = true;
+              try {
+                super.onLayout(changed, l, t, r, b);
+                int viewport = getHeight() - getPaddingTop() - getPaddingBottom();
+                scrollTo(0, Math.max(0, getChildAt(0).getHeight() - viewport));
+              } finally {
+                scrollProgrammatic = false;
+              }
+              app.answerScroll = getScrollY();
+              app.followAnswer = true;
+            } else {
+              super.onLayout(changed, l, t, r, b);
+            }
+          }
+        };
     answerPane.setFillViewport(true);
     answerPane.addView(answer, new ScrollView.LayoutParams(-1, -2));
     answerPane.setOnScrollChangeListener(
         (v, x, y, ox, oy) -> {
-          if ((touching || trackingAnswerScroll) && !scrollProgrammatic) updateAnswerReading();
+          if ((touching || trackingAnswerScroll) && !scrollProgrammatic) {
+            anchorAnswerEnd = false;
+            updateAnswerReading();
+          }
         });
     transcriptPane = new ScrollView(this);
     transcriptPane.setFillViewport(true);
@@ -987,7 +1031,7 @@ public final class MainActivity extends Activity {
     answerHeading.setOnClickListener(
         v -> {
           app.session.applyPendingAnswer();
-          app.session.deferRevisions(selectingText || !app.followAnswer);
+          updateAnswerRevisionDeferral();
         });
     answerPanel.removeView(answerHeading);
     LinearLayout answerHeader = row();
@@ -1042,8 +1086,9 @@ public final class MainActivity extends Activity {
     }
     lastAnswer = "";
     lastTranscript = "";
-    if (snapshot != null) render(snapshot);
-    answerPane.post(() -> programmaticAnswer(app.answerScroll));
+    // Rebuilding the panes should restore the saved reading position.
+    if (snapshot != null) render(snapshot, false);
+    restoreAnswerScroll(app.answerScroll);
     transcriptPane.post(
         () ->
             programmaticTranscript(
@@ -1075,6 +1120,18 @@ public final class MainActivity extends Activity {
     scrollProgrammatic = false;
   }
 
+  private boolean keepAnswerAtEnd() {
+    return anchorAnswerEnd && app.settings.autoScrollAnswer && !selectingText && !settingsScreen;
+  }
+
+  private void restoreAnswerScroll(int y) {
+    ScrollView pane = answerPane;
+    pane.post(
+        () -> {
+          if (pane == answerPane && !settingsScreen && !keepAnswerAtEnd()) programmaticAnswer(y);
+        });
+  }
+
   private void programmaticTranscript(int y) {
     if (transcriptPane == null) return;
     scrollProgrammatic = true;
@@ -1083,8 +1140,13 @@ public final class MainActivity extends Activity {
   }
 
   private void render(SessionEngine.Snapshot s) {
+    render(s, true);
+  }
+
+  private void render(SessionEngine.Snapshot s, boolean followUpdates) {
     if (app.meetings.currentEngine() != app.session) return;
-    SessionEngine.State previous = snapshot == null ? null : snapshot.state;
+    SessionEngine.Snapshot previousSnapshot = snapshot;
+    SessionEngine.State previous = previousSnapshot == null ? null : previousSnapshot.state;
     snapshot = s;
     if (settingsScreen || record == null) return;
     refreshVideo();
@@ -1127,7 +1189,24 @@ public final class MainActivity extends Activity {
             ? View.VISIBLE
             : View.GONE);
     String displayedAnswer = app.meetings.answer();
-    if (answer != null && !lastAnswer.equals(displayedAnswer)) {
+    boolean answerChanged = !lastAnswer.equals(displayedAnswer);
+    boolean completedAnswer =
+        previousSnapshot != null
+            && s.analysisState == SessionEngine.AnalysisState.DONE
+            && !s.hasUpdate
+            && (previousSnapshot.analysisState == SessionEngine.AnalysisState.GENERATING
+                || previousSnapshot.hasUpdate);
+    if (answer != null
+        && followUpdates
+        && app.settings.autoScrollAnswer
+        && !selectingText
+        && !s.answer.isEmpty()
+        && (answerChanged || completedAnswer)) {
+      anchorAnswerEnd = true;
+      // Scroll after the new text has been measured, including when the viewport resizes.
+      answerPane.requestLayout();
+    }
+    if (answer != null && answerChanged) {
       lastAnswer = displayedAnswer;
       int y = answerPane.getScrollY();
       answer.setText(
@@ -1139,7 +1218,7 @@ public final class MainActivity extends Activity {
                           ? R.string.image_answer_placeholder
                           : R.string.answer_placeholder))
               : Markdown.render(this, displayedAnswer));
-      answerPane.post(() -> programmaticAnswer(y));
+      if (!keepAnswerAtEnd()) restoreAnswerScroll(y);
     } else if (answer != null && displayedAnswer.isEmpty())
       answer.setText(
           s.analysisState == SessionEngine.AnalysisState.GENERATING
@@ -1237,6 +1316,31 @@ public final class MainActivity extends Activity {
         Toast.LENGTH_SHORT);
   }
 
+  private void setAutoScroll(boolean on) {
+    app.settings.autoScrollAnswer = on;
+    if (!on) anchorAnswerEnd = false;
+    persist();
+    updateAutoScrollButton();
+    updateAnswerReading();
+    showBarsTemporarily(4000);
+    showToast(
+        getString(on ? R.string.auto_scroll_enabled : R.string.auto_scroll_disabled),
+        Toast.LENGTH_SHORT);
+  }
+
+  private void updateAutoScrollButton() {
+    boolean on = app.settings.autoScrollAnswer;
+    autoScroll.setImageResource(on ? R.drawable.ic_auto_scroll_on : R.drawable.ic_auto_scroll);
+    autoScroll.setSelected(on);
+    AppTheme.bind(
+        autoScroll,
+        p -> {
+          autoScroll.setImageTintList(
+              AppTheme.foreground(p, app.settings.autoScrollAnswer ? ACCENT : TEXT));
+          autoScroll.setBackground(UiControls.ripple(this, null, 24));
+        });
+  }
+
   private void cancelToast() {
     if (currentToast != null) currentToast.cancel();
     currentToast = null;
@@ -1322,7 +1426,12 @@ public final class MainActivity extends Activity {
     if (answerPane == null || answer == null) return;
     int max = Math.max(0, answer.getHeight() - answerPane.getHeight());
     app.followAnswer = answerPane.getScrollY() >= max - dp(20);
-    app.session.deferRevisions(selectingText || !app.followAnswer);
+    updateAnswerRevisionDeferral();
+  }
+
+  private void updateAnswerRevisionDeferral() {
+    app.session.deferRevisions(
+        selectingText || (!app.settings.autoScrollAnswer && !app.followAnswer));
   }
 
   private String preferenceName(String id, String name) {
@@ -1429,7 +1538,7 @@ public final class MainActivity extends Activity {
             answerPane.post(
                 () -> {
                   if (!settingsScreen) {
-                    programmaticAnswer(answerY);
+                    if (!keepAnswerAtEnd()) programmaticAnswer(answerY);
                     programmaticTranscript(transcriptY);
                   }
                 });
@@ -1498,6 +1607,7 @@ public final class MainActivity extends Activity {
   public void onActionModeStarted(ActionMode mode) {
     super.onActionModeStarted(mode);
     selectingText = true;
+    anchorAnswerEnd = false;
     app.session.deferRevisions(true);
     handler.removeCallbacks(hideBars);
   }
@@ -1506,7 +1616,7 @@ public final class MainActivity extends Activity {
   public void onActionModeFinished(ActionMode mode) {
     super.onActionModeFinished(mode);
     selectingText = false;
-    app.session.deferRevisions(!app.followAnswer);
+    updateAnswerRevisionDeferral();
     scheduleBarsHide(4000);
   }
 
@@ -1738,6 +1848,7 @@ public final class MainActivity extends Activity {
       app.transcriptScroll = 0;
       app.followTranscript = true;
       app.followAnswer = true;
+      anchorAnswerEnd = false;
       answerPane.scrollTo(0, 0);
       programmaticTranscript(0);
       app.session.setAutomatic(app.settings.automatic);
@@ -2543,11 +2654,13 @@ public final class MainActivity extends Activity {
         setAwake(!app.awake);
         break;
       case UserSettings.ANSWER_UP:
+        anchorAnswerEnd = false;
         app.followAnswer = false;
-        app.session.deferRevisions(true);
+        updateAnswerRevisionDeferral();
         answerPane.smoothScrollBy(0, -dp(80));
         break;
       case UserSettings.ANSWER_DOWN:
+        anchorAnswerEnd = false;
         answerPane.smoothScrollBy(0, dp(80));
         handler.postDelayed(this::updateAnswerReading, 300);
         break;

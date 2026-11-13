@@ -298,7 +298,8 @@ public class MainActivityTest {
             + app.session.snapshot().status,
         second);
     assertTrue(f.textMessages.toString().contains("负债情况"));
-    second.delta("新版本答案");
+    String updatedAnswer = "新版本答案\n".repeat(150);
+    second.delta(updatedAnswer);
     second.completed(false);
     waitMs(200);
     assertTrue(app.session.snapshot().hasUpdate);
@@ -309,10 +310,17 @@ public class MainActivityTest {
             .toString()
             .contains("有更新 · 点击查看"));
     assertNotNull(find(Markdown.render(activity, "第一版答案。\n".repeat(100)).toString()));
+    activity.findViewById(R.id.auto_scroll_button).performClick();
+    waitMs(200);
+    assertTrue(app.session.snapshot().hasUpdate);
     activity.onActionModeFinished(null);
     waitMs(200);
     assertFalse(app.session.snapshot().hasUpdate);
-    assertNotNull(find(Markdown.render(activity, "新版本答案").toString()));
+    TextView updated = find(Markdown.render(activity, updatedAnswer).toString());
+    assertNotNull(updated);
+    ScrollView updatedPane = (ScrollView) updated.getParent();
+    assertTrue(updatedPane.getScrollY() > 0);
+    assertFalse(updatedPane.canScrollVertically(1));
     assertEquals(1, f.audioStarts);
     screenshot("automatic-completed");
   }
@@ -827,6 +835,55 @@ public class MainActivityTest {
     waitMs(4500);
     assertBarsVisibility(View.GONE);
     assertEquals(300, pane.getScrollY());
+  }
+
+  @Test
+  public void autoScrollFollowsStreamingAnswerAndCanBeDisabled() throws Exception {
+    FakeFactory f = fakeSession();
+    View toggle = activity.findViewById(R.id.auto_scroll_button);
+    assertTrue(toggle.getRight() <= activity.findViewById(R.id.awake_button).getLeft());
+    assertFalse(toggle.createAccessibilityNodeInfo().isChecked());
+    toggle.performClick();
+    assertTrue(toggle.createAccessibilityNodeInfo().isChecked());
+    assertTrue(new SettingsRepository(activity).load().autoScrollAnswer);
+    assertFalse(app.settings.automatic);
+
+    f.listener.ready();
+    f.listener.segment(new SpeechProvider.Segment(1, "测试自动滚动", true, 0, 1000));
+    app.session.stop();
+    f.listener.completed();
+    TextProvider.Listener stream = f.textRequests.poll(2, TimeUnit.SECONDS);
+    assertNotNull(stream);
+    String first = "第一段流式答案。\n".repeat(150);
+    stream.delta(first);
+    waitMs(300);
+    ScrollView pane = (ScrollView) find(Markdown.render(activity, first).toString()).getParent();
+    assertTrue(pane.getScrollY() > 0);
+    assertFalse(pane.canScrollVertically(1));
+    int firstEnd = pane.getScrollY();
+
+    String next = "继续追加答案。\n".repeat(75);
+    stream.delta(next);
+    waitMs(300);
+    assertEquals(
+        Markdown.render(activity, first + next).toString(),
+        ((TextView) pane.getChildAt(0)).getText().toString());
+    assertTrue("Stream growth should advance the viewport", pane.getScrollY() > firstEnd);
+    waitMs(4500);
+    assertBarsVisibility(View.GONE);
+    assertFalse(pane.canScrollVertically(1));
+
+    gesture(false, false);
+    waitMs(300);
+    assertFalse(pane.canScrollVertically(1));
+    toggle.performClick();
+    assertFalse(new SettingsRepository(activity).load().autoScrollAnswer);
+    pane.scrollTo(0, 100);
+    stream.delta("最后一段答案。\n".repeat(75));
+    stream.completed(false);
+    waitMs(4500);
+    assertEquals(100, pane.getScrollY());
+    assertEquals(SessionEngine.State.DONE, app.session.snapshot().state);
   }
 
   @Test

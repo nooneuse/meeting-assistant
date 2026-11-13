@@ -6,6 +6,7 @@
     <item name="meeting_preference" type="id" />
     <item name="meeting_content" type="id" />
     <item name="awake_button" type="id" />
+    <item name="auto_scroll_button" type="id" />
     <item name="menu_settings" type="id" />
     <item name="more_button" type="id" />
     <item name="transcript_toggle" type="id" />

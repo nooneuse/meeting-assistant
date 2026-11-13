@@ -3,6 +3,9 @@
     <string name="meetings">"议题列表"</string>
     <string name="choose_preference">"选择回答偏好"</string>
     <string name="awake_enable">"开启屏幕常亮"</string>
+    <string name="auto_scroll">自动滚动</string>
+    <string name="auto_scroll_enabled">已开启答案自动滚动</string>
+    <string name="auto_scroll_disabled">已关闭答案自动滚动</string>
     <string name="start_listening">"开始听"</string>
     <string name="transcript">"听写原文"</string>
     <string name="retry">"重试"</string>

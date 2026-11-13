@@ -3,6 +3,9 @@
     <string name="meetings">"Topics"</string>
     <string name="choose_preference">"Choose response preference"</string>
     <string name="awake_enable">"Keep screen awake"</string>
+    <string name="auto_scroll">Auto-scroll</string>
+    <string name="auto_scroll_enabled">Answer auto-scroll on</string>
+    <string name="auto_scroll_disabled">Answer auto-scroll off</string>
     <string name="start_listening">"Start listening"</string>
     <string name="transcript">"Transcript"</string>
     <string name="retry">"Retry"</string>

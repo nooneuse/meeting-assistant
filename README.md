@@ -24,7 +24,7 @@ An open-source Android assistant that combines live transcripts and text from sl
 4. Tap **Start listening**, then **Stop listening** to analyze. Enable **Auto** before listening for automatic segmentation and ongoing answer updates.
 5. For slides or documents, open **Input sources** in the top-right corner, enable video and select a source. Preview it in **Image input settings**, then use the camera button to capture a frame for analysis.
 
-Use the bulb to keep the screen awake, the transcript button to show or hide the original text, and the copy icons to copy results. Audio sources can also be selected from **Input sources**.
+Use the bulb to keep the screen awake. **Auto-scroll**, to its left, follows new answers to the bottom. Use the transcript button to show or hide the original text, and the copy icons to copy results. Audio sources can also be selected from **Input sources**.
 
 ### Keyboard shortcuts
 

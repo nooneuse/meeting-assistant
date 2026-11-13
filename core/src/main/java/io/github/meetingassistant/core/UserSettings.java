@@ -16,6 +16,7 @@ public final class UserSettings {
   public String selectedId = "";
   public boolean keyboardEnabled = true;
   public boolean automatic = false;
+  public boolean autoScrollAnswer = false;
   public Map<String, Integer> bindings = new LinkedHashMap<>();
 
   public static final String ANSWER_UP = "answer.up",
